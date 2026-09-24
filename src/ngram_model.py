@@ -38,6 +38,7 @@ def count_contexts(text:str, n: int) -> Counter[str]:
 
     return Counter(contexts)
 
+# Вероятность n-грамм со сглаживанием через альфа ()
 def ngram_probability(ngram: str,
     ngram_counts: Counter[str],
     context_counts: Counter[str],

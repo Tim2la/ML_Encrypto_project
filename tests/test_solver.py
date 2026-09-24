@@ -1,10 +1,18 @@
 import random
 
-from src.solver import swap_key_values
-from src.cipher import encrypt
-from src.ngram_model import NGramLanguageModel
-from src.solver import (score_key, should_accept, simulated_annealing, swap_key_values, generate_frequency_key, solve_with_restarts)
+import pytest
 
+from src.cipher import RUSSIAN_ALPHABET, encrypt
+from src.ngram_model import NGramLanguageModel
+from src.solver import (
+    crack_cipher,
+    generate_frequency_key,
+    score_key,
+    should_accept,
+    simulated_annealing,
+    solve_with_restarts,
+    swap_key_values,
+)
 
 def test_swap_key_values_preserves_permutation() -> None:
     original_key = {
@@ -203,3 +211,43 @@ def test_solve_with_restarts_preserves_key_and_score():
     assert best_score >= initial_score
     assert set(best_key.keys()) == set(initial_key.keys())
     assert set(best_key.values()) == set(initial_key.values())
+
+def test_crack_cipher_rejects_text_without_russian_letters():
+    model = NGramLanguageModel(
+        n=3,
+        alpha=0.1,
+    )
+    model.fit("ЭТО ОБУЧАЮЩИЙ ТЕКСТ")
+
+    with pytest.raises(
+        ValueError,
+        match="Шифртекст слишком короткий",
+    ):
+        crack_cipher(
+            ciphertext="123 !!!",
+            model=model,
+        )
+
+def test_crack_cipher_returns_text_key_and_score():
+    model = NGramLanguageModel(
+        n=2,
+        alpha=0.1,
+    )
+    model.fit(
+        "ЭТО ПРОСТОЙ ОБУЧАЮЩИЙ ТЕКСТ " * 10
+    )
+
+    decrypted_text, key, score = crack_cipher(
+        ciphertext="ФТФ ФЮОБФЮК ФТБФ ФТФ ФЮОБФЮК ФТБФ",
+        model=model,
+        restarts=1,
+        iterations_per_restart=10,
+        seed=42,
+    )
+
+    assert isinstance(decrypted_text, str)
+    assert isinstance(key, dict)
+    assert isinstance(score, float)
+
+    assert set(key.keys()) == set(RUSSIAN_ALPHABET)
+    assert set(key.values()) == set(RUSSIAN_ALPHABET)

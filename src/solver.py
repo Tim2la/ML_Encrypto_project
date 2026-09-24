@@ -8,6 +8,7 @@ from src.text_processing import normalize_text
 
 RUSSIAN_FREQUENCY_ORDER = "ОЕАИНТСРВЛКМДПУЯЫЬГЗБЧЙХЖШЮЦЩЭФЪЁ"
 
+# Замена двух рандомных ключей
 def swap_key_values(key: dict[str, str], random_generator: random.Random) -> dict[str, str]:
     if len(key) < 2:
         raise ValueError(
@@ -26,6 +27,7 @@ def swap_key_values(key: dict[str, str], random_generator: random.Random) -> dic
 
     return new_key
 
+# Вычисляем score для текущего ключа
 def score_key(
     ciphertext: str,
     encryption_key: dict[str, str],
@@ -40,6 +42,7 @@ def score_key(
 
     return model.score(normalized_text)
 
+# Функция для эпрува нового ключа
 def should_accept(
     current_score: float,
     candidate_score: float,
@@ -54,10 +57,13 @@ def should_accept(
 
     score_difference = candidate_score - current_score
     acceptance_probability = exp(score_difference / temperature)
+    # Оценка для неправильного
 
     random_number = random_generator.random()
-
+    # Сравниваем с рандомом, чтобы на большом количестве, вероятность работала корректно
+    # Например вероятность принятия неправильного ответа 0.3, тогда на бесконечности 30 процентов неправильных приведут нас к правильному ответу
     return random_number < acceptance_probability
+
 
 def generate_frequency_key(
     ciphertext: str,
@@ -102,6 +108,7 @@ def generate_frequency_key(
 
     return key
 
+# Отжиг
 def simulated_annealing(
     ciphertext: str,
     initial_key: dict[str, str],
@@ -201,3 +208,51 @@ def solve_with_restarts(
             best_score = candidate_score
 
     return best_key, best_score
+
+def crack_cipher(
+    ciphertext: str,
+    model: NGramLanguageModel,
+    restarts: int = 3,
+    iterations_per_restart: int = 20_000,
+    start_temperature: float = 0.03,
+    cooling_rate: float = 0.9995,
+    seed: int | None = None,
+) -> tuple[str, dict[str, str], float]:
+    if not model.is_trained:
+        raise RuntimeError(
+            "Языковая модель должна быть обучена"
+        )
+
+    normalized_ciphertext = normalize_text(ciphertext)
+
+    letters_count = sum(
+        symbol in RUSSIAN_ALPHABET
+        for symbol in normalized_ciphertext
+    )
+
+    if letters_count < model.n:
+        raise ValueError(
+            "Шифртекст слишком короткий или не содержит русских букв"
+        )
+
+    initial_key = generate_frequency_key(
+        ciphertext,
+    )
+
+    best_key, best_score = solve_with_restarts(
+        ciphertext=ciphertext,
+        initial_key=initial_key,
+        model=model,
+        restarts=restarts,
+        iterations_per_restart=iterations_per_restart,
+        start_temperature=start_temperature,
+        cooling_rate=cooling_rate,
+        seed=seed,
+    )
+
+    decrypted_text = decrypt(
+        ciphertext,
+        best_key,
+    )
+
+    return decrypted_text, best_key, best_score

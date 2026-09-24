@@ -32,17 +32,12 @@ def calculate_accuracy(
 def main() -> None:
     print("Загрузка корпуса...")
 
-    corpus = CORPUS_PATH.read_text(
-        encoding="utf-8",
-    )
+    corpus = CORPUS_PATH.read_text(encoding="utf-8")
     normalized_corpus = normalize_text(corpus)
 
     print("Обучение языковой модели...")
 
-    model = NGramLanguageModel(
-        n=3,
-        alpha=0.1,
-    )
+    model = NGramLanguageModel(n=3, alpha=0.1)
     model.fit(normalized_corpus)
 
     plaintext = (
@@ -58,18 +53,11 @@ def main() -> None:
     )
     random.seed(42)
 
-    real_key = generate_key(
-        RUSSIAN_ALPHABET,
-    )
+    real_key = generate_key(RUSSIAN_ALPHABET)
 
-    ciphertext = encrypt(
-        plaintext,
-        real_key,
-    )
+    ciphertext = encrypt(plaintext, real_key)
 
-    initial_key = generate_frequency_key(
-        ciphertext,
-    )
+    initial_key = generate_frequency_key(ciphertext)
 
     print("Запуск расшифровки...")
 
@@ -84,15 +72,9 @@ def main() -> None:
         seed=42,
     )
 
-    decrypted_text = decrypt(
-        ciphertext,
-        best_key,
-    )
+    decrypted_text = decrypt(ciphertext, best_key)
 
-    accuracy = calculate_accuracy(
-        plaintext,
-        decrypted_text,
-    )
+    accuracy = calculate_accuracy(plaintext, decrypted_text)
 
     print("\nИсходный текст:")
     print(plaintext)

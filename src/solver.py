@@ -1,12 +1,12 @@
 import random
 
-from math import exp
 from collections import Counter
-from src.cipher import RUSSIAN_ALPHABET, decrypt
+from math import exp
+
+from src.cipher import decrypt
+from src.languages import RUSSIAN_ALPHABET, RUSSIAN_FREQUENCY_ORDER
 from src.ngram_model import NGramLanguageModel
 from src.text_processing import normalize_text
-
-RUSSIAN_FREQUENCY_ORDER = "ОЕАИНТСРВЛКМДПУЯЫЬГЗБЧЙХЖШЮЦЩЭФЪЁ"
 
 # Замена двух рандомных ключей
 def swap_key_values(key: dict[str, str], random_generator: random.Random) -> dict[str, str]:
@@ -38,7 +38,10 @@ def score_key(
         encryption_key,
     )
 
-    normalized_text = normalize_text(decrypted_text)
+    normalized_text = normalize_text(
+        decrypted_text,
+        model.alphabet,
+    )
 
     return model.score(normalized_text)
 
@@ -212,6 +215,8 @@ def solve_with_restarts(
 def crack_cipher(
     ciphertext: str,
     model: NGramLanguageModel,
+    alphabet: str = RUSSIAN_ALPHABET,
+    frequency_order: str = RUSSIAN_FREQUENCY_ORDER,
     restarts: int = 3,
     iterations_per_restart: int = 20_000,
     start_temperature: float = 0.03,
@@ -223,20 +228,25 @@ def crack_cipher(
             "Языковая модель должна быть обучена"
         )
 
-    normalized_ciphertext = normalize_text(ciphertext)
+    normalized_ciphertext = normalize_text(
+        ciphertext,
+        alphabet,
+    )
 
     letters_count = sum(
-        symbol in RUSSIAN_ALPHABET
+        symbol in alphabet
         for symbol in normalized_ciphertext
     )
 
     if letters_count < model.n:
         raise ValueError(
-            "Шифртекст слишком короткий или не содержит русских букв"
+            "Шифртекст слишком короткий или не содержит букв выбранного алфавита"
         )
 
     initial_key = generate_frequency_key(
         ciphertext,
+        alphabet=alphabet,
+        frequency_order=frequency_order,
     )
 
     best_key, best_score = solve_with_restarts(

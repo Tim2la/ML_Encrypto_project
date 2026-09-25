@@ -3,6 +3,7 @@ import random
 import pytest
 
 from src.cipher import RUSSIAN_ALPHABET, encrypt
+from src.languages import ENGLISH_ALPHABET, ENGLISH_FREQUENCY_ORDER
 from src.ngram_model import NGramLanguageModel
 from src.solver import (
     crack_cipher,
@@ -251,3 +252,29 @@ def test_crack_cipher_returns_text_key_and_score():
 
     assert set(key.keys()) == set(RUSSIAN_ALPHABET)
     assert set(key.values()) == set(RUSSIAN_ALPHABET)
+
+
+def test_crack_cipher_supports_english_alphabet():
+    model = NGramLanguageModel(
+        n=2,
+        alpha=0.1,
+        alphabet=ENGLISH_ALPHABET + " ",
+    )
+    model.fit(
+        "THIS IS A SIMPLE ENGLISH TRAINING TEXT " * 10
+    )
+
+    decrypted_text, key, score = crack_cipher(
+        ciphertext="UIJT JT B TJNQMF FOHMJTI NFTTBHF",
+        model=model,
+        alphabet=ENGLISH_ALPHABET,
+        frequency_order=ENGLISH_FREQUENCY_ORDER,
+        restarts=1,
+        iterations_per_restart=10,
+        seed=42,
+    )
+
+    assert isinstance(decrypted_text, str)
+    assert isinstance(score, float)
+    assert set(key.keys()) == set(ENGLISH_ALPHABET)
+    assert set(key.values()) == set(ENGLISH_ALPHABET)

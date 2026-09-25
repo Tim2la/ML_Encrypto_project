@@ -1,6 +1,7 @@
-from src.cipher import RUSSIAN_ALPHABET
-from math import log
 from collections import Counter
+from math import log
+
+from src.languages import RUSSIAN_ALPHABET
 # Counter специальный словарь-счетчик, считает количество повторяющихся объектов и сопостовляет в словарь
 
 # Выделяем граммы

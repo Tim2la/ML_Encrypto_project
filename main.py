@@ -1,30 +1,53 @@
 from pathlib import Path
 from time import perf_counter
 
-from src.cipher import RUSSIAN_ALPHABET, reverse_key
+from src.cipher import reverse_key
+from src.languages import LANGUAGES_BY_CHOICE, LanguageConfig
 from src.ngram_model import NGramLanguageModel
 from src.solver import crack_cipher
 from src.text_processing import normalize_text
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-CORPUS_PATH = PROJECT_ROOT / "data" / "wikipedia_ru.txt"
+DATA_DIRECTORY = PROJECT_ROOT / "data"
 
 
-def load_language_model() -> NGramLanguageModel:
-    if not CORPUS_PATH.exists():
+def choose_language() -> LanguageConfig:
+    print("Выберите язык шифртекста:")
+    print("1 — Русский")
+    print("2 — English")
+
+    choice = input("> ").strip()
+
+    if choice not in LANGUAGES_BY_CHOICE:
+        raise ValueError("Нужно ввести 1 или 2")
+
+    return LANGUAGES_BY_CHOICE[choice]
+
+
+def load_language_model(
+    language: LanguageConfig,
+) -> NGramLanguageModel:
+    corpus_path = DATA_DIRECTORY / language.corpus_filename
+
+    if not corpus_path.exists():
         raise FileNotFoundError(
-            f"Корпус не найден: {CORPUS_PATH}"
+            f"Корпус не найден: {corpus_path}. "
+            f"Запустите: python download_corpus.py --language {language.code}"
         )
 
-    raw_corpus = CORPUS_PATH.read_text(
+    raw_corpus = corpus_path.read_text(
         encoding="utf-8",
     )
-    normalized_corpus = normalize_text(raw_corpus)
+    normalized_corpus = normalize_text(
+        raw_corpus,
+        language.alphabet,
+    )
 
     model = NGramLanguageModel(
         n=3,
         alpha=0.1,
+        alphabet=language.alphabet + " ",
     )
     model.fit(normalized_corpus)
 
@@ -55,6 +78,7 @@ def read_ciphertext() -> str:
 
 def print_decryption_key(
     encryption_key: dict[str, str],
+    alphabet: str,
 ) -> None:
     decryption_key = reverse_key(
         encryption_key,
@@ -65,26 +89,26 @@ def print_decryption_key(
         "(зашифрованная буква → обычная буква):"
     )
 
-    for encrypted_symbol in RUSSIAN_ALPHABET:
+    for encrypted_symbol in alphabet:
         original_symbol = decryption_key[encrypted_symbol]
-
-        print(
-            f"{encrypted_symbol} → {original_symbol}"
-        )
+        print(f"{encrypted_symbol} → {original_symbol}")
 
 
 def main() -> None:
     try:
-        print("Загрузка и обучение языковой модели...")
+        language = choose_language()
 
-        model = load_language_model()
-
+        print(
+            f"\nЗагрузка и обучение модели: "
+            f"{language.display_name}..."
+        )
+        model = load_language_model(language)
         print("Языковая модель готова.")
 
         ciphertext = read_ciphertext()
-
         normalized_ciphertext = normalize_text(
             ciphertext,
+            language.alphabet,
         )
         letters_count = len(
             normalized_ciphertext.replace(" ", "")
@@ -97,13 +121,14 @@ def main() -> None:
             )
 
         print("\nРасшифрование началось...")
-
         start_time = perf_counter()
 
         decrypted_text, best_key, best_score = crack_cipher(
             ciphertext=ciphertext,
             model=model,
-            restarts=3,
+            alphabet=language.alphabet,
+            frequency_order=language.frequency_order,
+            restarts=5,
             iterations_per_restart=20_000,
             start_temperature=0.03,
             cooling_rate=0.9995,
@@ -123,6 +148,7 @@ def main() -> None:
 
         print_decryption_key(
             best_key,
+            language.alphabet,
         )
 
     except FileNotFoundError as error:

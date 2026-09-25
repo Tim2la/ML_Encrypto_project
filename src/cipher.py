@@ -1,6 +1,6 @@
 import random
 
-RUSSIAN_ALPHABET = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
+from src.languages import RUSSIAN_ALPHABET
 
 # Зашифровать
 def encrypt(text: str, key: dict[str, str]) -> str:

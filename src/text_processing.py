@@ -1,4 +1,4 @@
-from src.cipher import RUSSIAN_ALPHABET
+from src.languages import RUSSIAN_ALPHABET
 
 # Нормализируем текст, поднимаем в верхний регист и убираем символы не из алфавита
 def normalize_text(text:str, alphabet:str = RUSSIAN_ALPHABET) -> str:

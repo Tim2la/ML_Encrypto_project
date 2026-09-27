@@ -39,7 +39,7 @@ def count_contexts(text:str, n: int) -> Counter[str]:
 
     return Counter(contexts)
 
-# Вероятность n-грамм со сглаживанием через альфа ()
+# Вероятность n-грамм со сглаживанием через альфа
 def ngram_probability(ngram: str,
     ngram_counts: Counter[str],
     context_counts: Counter[str],
@@ -75,6 +75,7 @@ class NGramLanguageModel:
         self.context_counts = count_contexts(text, self.n)
         self.is_trained = True
 
+    # Функция для оценки уверенности модели
     def score(self, text: str) -> float:
         if not self.is_trained:
             raise RuntimeError("Сначала необходимо обучить модель")

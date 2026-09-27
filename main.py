@@ -6,10 +6,11 @@ from src.languages import LANGUAGES_BY_CHOICE, LanguageConfig
 from src.ngram_model import NGramLanguageModel
 from src.solver import crack_cipher
 from src.text_processing import normalize_text
+from src.model_storage import load_model
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-DATA_DIRECTORY = PROJECT_ROOT / "data"
+MODELS_DIRECTORY = PROJECT_ROOT / "models"
 
 
 def choose_language() -> LanguageConfig:
@@ -28,30 +29,15 @@ def choose_language() -> LanguageConfig:
 def load_language_model(
     language: LanguageConfig,
 ) -> NGramLanguageModel:
-    corpus_path = DATA_DIRECTORY / language.corpus_filename
+    model_path = MODELS_DIRECTORY / f"{language.code}_model.pkl"
 
-    if not corpus_path.exists():
+    if not model_path.exists():
         raise FileNotFoundError(
-            f"Корпус не найден: {corpus_path}. "
-            f"Запустите: python download_corpus.py --language {language.code}"
+            f"Модель не найдена: {model_path}. "
+            "Сначала запустите: python train_models.py"
         )
 
-    raw_corpus = corpus_path.read_text(
-        encoding="utf-8",
-    )
-    normalized_corpus = normalize_text(
-        raw_corpus,
-        language.alphabet,
-    )
-
-    model = NGramLanguageModel(
-        n=3,
-        alpha=0.1,
-        alphabet=language.alphabet + " ",
-    )
-    model.fit(normalized_corpus)
-
-    return model
+    return load_model(model_path)
 
 
 def read_ciphertext() -> str:
@@ -99,7 +85,7 @@ def main() -> None:
         language = choose_language()
 
         print(
-            f"\nЗагрузка и обучение модели: "
+            f"\nЗагрузка: "
             f"{language.display_name}..."
         )
         model = load_language_model(language)

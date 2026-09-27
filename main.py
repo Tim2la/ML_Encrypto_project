@@ -28,8 +28,9 @@ def choose_language() -> LanguageConfig:
 
 def load_language_model(
     language: LanguageConfig,
+    n: int = 3,
 ) -> NGramLanguageModel:
-    model_path = MODELS_DIRECTORY / f"{language.code}_model.pkl"
+    model_path = MODELS_DIRECTORY / f"{language.code}_model_{n}_gramm.pkl"
 
     if not model_path.exists():
         raise FileNotFoundError(

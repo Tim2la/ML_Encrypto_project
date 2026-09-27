@@ -1,4 +1,6 @@
 import random
+import pickle
+
 from pathlib import Path
 from statistics import mean
 from time import perf_counter
@@ -37,6 +39,7 @@ def evaluate_language(
     language: LanguageConfig,
     text_number: int,
     limit: int,
+    n: int,
 ) -> tuple[float, float]:
     text_path = (
         PROJECT_ROOT
@@ -58,7 +61,7 @@ def evaluate_language(
     encryption_key = dict(zip(language.alphabet, shuffled_letters))
 
     ciphertext = encrypt(original_text, encryption_key)
-    model = load_language_model(language)
+    model = load_language_model(language, n)
 
     start_time = perf_counter()
     decrypted_text, _, score = crack_cipher(
@@ -80,42 +83,52 @@ def evaluate_language(
         language.alphabet,
     )
 
-    print(f"\nЯзык: {language.display_name}")
-    print(f"Текст № {text_number}")
-    print(f"Длина: {limit} букв")
-    print(f"Точность: {accuracy:.2%}")
-    print(f"Время: {elapsed_seconds:.2f} с")
-    print(f"Оценка модели: {score:.4f}")
-
     return accuracy, elapsed_seconds
 
 
 def main() -> None:
+    array = []
     for language in (RUSSIAN, ENGLISH):
-        for limit in (100, 200, 350):
-            results = [
-                evaluate_language(language, text_number, limit)
-                for text_number in (1, 2, 3)
-            ]
+        for n in range(2, 5):
+            for limit in (100, 200, 350):
+                results = [
+                    evaluate_language(language, text_number, limit, n)
+                    for text_number in (1, 2, 3)
+                ]
 
-            accuracies = [accuracy for accuracy, _ in results]
-            times = [seconds for _, seconds in results]
-            fully_correct = sum(
-                accuracy == 1.0 for accuracy in accuracies
-            )
+                accuracies = [accuracy for accuracy, _ in results]
+                times = [seconds for _, seconds in results]
+                fully_correct = sum(
+                    accuracy == 1.0 for accuracy in accuracies
+                )
+                array.append([
+                    language.code,
+                    n,
+                    limit,
+                    round(mean(accuracies) * 100, 3),
+                    fully_correct,
+                    round(mean(times), 2),
+                ])
 
-            print(
-                f"\nИтог: {language.display_name}, "
-                f"{limit} букв"
-            )
-            print(f"Средняя точность: {mean(accuracies):.2%}")
-            print(
-                f"Полностью верно: "
-                f"{fully_correct} из {len(results)}"
-            )
-            print(f"Среднее время: {mean(times):.2f} с")
+                print(
+                    f"\nИтог: {language.display_name}, "
+                    f"{n} грамм, {limit} букв"
+                )
+                print(f"Средняя точность: {mean(accuracies):.2%}")
+                print(
+                    f"Полностью верно: "
+                    f"{fully_correct} из {len(results)}"
+                )
+                print(f"Среднее время: {mean(times):.2f} с")
+
+    array_path = PROJECT_ROOT / "graphic" / "array.pkl"
+    array_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with array_path.open("wb") as file:
+        pickle.dump(array, file)
+
+    print(f"Результаты сохранены: {array_path}")
 
 
 if __name__ == "__main__":
     main()
-    

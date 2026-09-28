@@ -29,6 +29,19 @@ def train_language_model(language: LanguageConfig) -> None:
 
         print(f"{language.display_name}: модель сохранена в {model_path}")
 
+    # Отдельная модель оценивает сплошной текст, когда границы слов неизвестны.
+    compact_text = training_text.replace(" ", "")
+    compact_model = NGramLanguageModel(
+        n=3,
+        alpha=0.1,
+        alphabet=language.alphabet,
+    )
+    compact_model.fit(compact_text)
+
+    compact_path = MODELS_DIRECTORY / f"{language.code}_model_3_compact.pkl"
+    save_model(compact_model, compact_path)
+    print(f"{language.display_name}: модель сохранена в {compact_path}")
+
 
 def main() -> None:
     train_language_model(RUSSIAN)

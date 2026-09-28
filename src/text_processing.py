@@ -12,3 +12,8 @@ def normalize_text(text:str, alphabet:str = RUSSIAN_ALPHABET) -> str:
 
     normalized_text = "".join(normalized_symbols)
     return " ".join(normalized_text.split())
+
+
+def compact_ciphertext(text: str, alphabet: str) -> str:
+    # В режиме блоков пробелы и знаки препинания не несут информации о словах.
+    return "".join(symbol for symbol in text.upper() if symbol in alphabet)

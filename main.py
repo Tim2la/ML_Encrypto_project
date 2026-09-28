@@ -5,7 +5,7 @@ from src.cipher import reverse_key
 from src.languages import LANGUAGES_BY_CHOICE, LanguageConfig
 from src.ngram_model import NGramLanguageModel
 from src.solver import crack_cipher
-from src.text_processing import normalize_text
+from src.text_processing import compact_ciphertext, normalize_text
 from src.model_storage import load_model
 
 
@@ -26,11 +26,30 @@ def choose_language() -> LanguageConfig:
     return LANGUAGES_BY_CHOICE[choice]
 
 
+def choose_ciphertext_format() -> bool:
+    print("\nКак расположены пробелы в шифртексте?")
+    print("1 — между словами")
+    print("2 — между искусственными блоками букв")
+
+    choice = input("> ").strip()
+    if choice not in ("1", "2"):
+        raise ValueError("Нужно ввести 1 или 2")
+
+    return choice == "2"
+
+
 def load_language_model(
     language: LanguageConfig,
     n: int = 3,
+    compact: bool = False,
 ) -> NGramLanguageModel:
-    model_path = MODELS_DIRECTORY / f"{language.code}_model_{n}_gramm.pkl"
+    # Обычная и «без пробелов» модели обучены на разных видах текста.
+    if compact:
+        if n != 3:
+            raise ValueError("Для текста без пробелов доступна только 3-граммная модель")
+        model_path = MODELS_DIRECTORY / f"{language.code}_model_3_compact.pkl"
+    else:
+        model_path = MODELS_DIRECTORY / f"{language.code}_model_{n}_gramm.pkl"
 
     if not model_path.exists():
         raise FileNotFoundError(
@@ -84,17 +103,24 @@ def print_decryption_key(
 def main() -> None:
     try:
         language = choose_language()
+        compact = choose_ciphertext_format()
 
         print(
             f"\nЗагрузка: "
             f"{language.display_name}..."
         )
-        model = load_language_model(language)
+        model = load_language_model(language, compact=compact)
         print("Языковая модель готова.")
 
         ciphertext = read_ciphertext()
+        # Удаляем границы блоков до поиска ключа, но оставляем исходный ввод для вывода.
+        ciphertext_for_solver = (
+            compact_ciphertext(ciphertext, language.alphabet)
+            if compact
+            else ciphertext
+        )
         normalized_ciphertext = normalize_text(
-            ciphertext,
+            ciphertext_for_solver,
             language.alphabet,
         )
         letters_count = len(
@@ -111,7 +137,7 @@ def main() -> None:
         start_time = perf_counter()
 
         decrypted_text, best_key, best_score = crack_cipher(
-            ciphertext=ciphertext,
+            ciphertext=ciphertext_for_solver,
             model=model,
             alphabet=language.alphabet,
             frequency_order=language.frequency_order,
@@ -129,6 +155,12 @@ def main() -> None:
 
         print("\nРезультат расшифровки:")
         print(decrypted_text)
+
+        if compact:
+            print(
+                "\nПробелы между блоками удалены. "
+                "Исходные границы слов пока не восстанавливаются."
+            )
 
         print(f"\nОценка модели: {best_score:.4f}")
         print(f"Время работы: {elapsed_time:.2f} секунд")

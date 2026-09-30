@@ -1,16 +1,19 @@
+from collections import Counter
 from pathlib import Path
 from time import perf_counter
 
 from src.cipher import reverse_key
 from src.languages import LANGUAGES_BY_CHOICE, LanguageConfig
+from src.model_storage import load_model
 from src.ngram_model import NGramLanguageModel
 from src.solver import crack_cipher
 from src.text_processing import compact_ciphertext, normalize_text
-from src.model_storage import load_model
+from src.word_segmentation import count_words, segment_text
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 MODELS_DIRECTORY = PROJECT_ROOT / "models"
+DATA_DIRECTORY = PROJECT_ROOT / "data"
 
 
 def choose_language() -> LanguageConfig:
@@ -58,6 +61,16 @@ def load_language_model(
         )
 
     return load_model(model_path)
+
+
+def load_word_counts(language: LanguageConfig) -> Counter[str] | None:
+    corpus_path = DATA_DIRECTORY / language.corpus_filename
+    if not corpus_path.exists():
+        return None
+
+    # Частоты слов нужны только для приблизительного восстановления пробелов.
+    corpus = corpus_path.read_text(encoding="utf-8")
+    return count_words(normalize_text(corpus, language.alphabet))
 
 
 def read_ciphertext() -> str:
@@ -157,13 +170,16 @@ def main() -> None:
         print(decrypted_text)
 
         if compact:
-            print(
-                "\nПробелы между блоками удалены. "
-                "Исходные границы слов пока не восстанавливаются."
-            )
+            word_counts = load_word_counts(language)
+            if word_counts:
+                print("\nПредположительная разбивка на слова (буквы не исправлены):")
+                print(segment_text(decrypted_text, word_counts))
+            else:
+                print("\nКорпус не найден: приблизительная разбивка на слова недоступна.")
+            print("Границы слов определены приблизительно, отдельные буквы могут быть неверны.")
 
         print(f"\nОценка модели: {best_score:.4f}")
-        print(f"Время работы: {elapsed_time:.2f} секунд")
+        print(f"Время поиска: {elapsed_time:.2f} секунд")
 
         print_decryption_key(
             best_key,

@@ -1,3 +1,4 @@
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -86,6 +87,7 @@ def test_main_passes_compact_text_to_solver(
     monkeypatch.setattr(app, "load_language_model", fake_load_model)
     monkeypatch.setattr(app, "crack_cipher", fake_crack_cipher)
     monkeypatch.setattr(app, "print_decryption_key", lambda *_: None)
+    monkeypatch.setattr(app, "load_word_counts", lambda _: Counter({"АБВГ": 1}))
 
     app.main()
 
